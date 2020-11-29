@@ -22,20 +22,20 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
 
             // Example 1 - Using config for filter and default logger
             //services
-            //    .AddLogbook(Configuration.GetSection("HttpLogbook"));
+            //    .AddHttpLogbook(Configuration.GetSection("HttpLogbook"));
 
             // Example 2 - Using config for filter and custom logger
             //services
-            //    .AddLogbook(Configuration.GetSection("HttpLogbook"))
+            //    .AddHttpLogbook(Configuration.GetSection("HttpLogbook"))
             //    .AddLogger<MyHttpLogbookLogger>();
 
             // Example 3 - Using custom filter and custom logger
-            services.AddLogbook()
+            services.AddHttpLogbook()
                 .AddFilter<MyHttpLogbookFilter>()
                 .AddLogger<MyHttpLogbookLogger>();
 
             // Example 4 - Using custom filter and default logger
-            //services.AddLogbook()
+            //services.AddHttpLogbook()
             //    .AddFilter<MyHttpLogbookFilter>();
         }
 

@@ -17,10 +17,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IHttpLogbookBuilder AddLogbook(this IServiceCollection services, IConfiguration configuration)
         {
             services.Configure<HttpLogbookConfig>(configuration);
-            return services.AddLogbook();
+            return services.AddHttpLogbook();
         }
 
-        public static IHttpLogbookBuilder AddLogbook(this IServiceCollection services)
+        public static IHttpLogbookBuilder AddHttpLogbook(this IServiceCollection services)
         {
             var builder = services.AddLogbookBuilder();
             builder.Services.TryAddSingleton<IHttpLogbookFilter, HttpLogbookConfigFilter>();

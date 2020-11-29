@@ -5,7 +5,12 @@ VisualStudioVersion = 16.0.30621.155
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Scombroid.AspNetCore.HttpLogbook", "Scombroid.AspNetCore.HttpLogbook\Scombroid.AspNetCore.HttpLogbook.csproj", "{5C16211A-EDBE-4FFE-8545-B869FA70A5EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scombroid.AspNetCore.HttpLogbook.DemoApp", "Scombroid.AspNetCore.HttpLogbook.DemoApp\Scombroid.AspNetCore.HttpLogbook.DemoApp.csproj", "{013BCDF0-BBCC-4B2D-94A5-7140FB03A690}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Scombroid.AspNetCore.HttpLogbook.DemoApp", "Scombroid.AspNetCore.HttpLogbook.DemoApp\Scombroid.AspNetCore.HttpLogbook.DemoApp.csproj", "{013BCDF0-BBCC-4B2D-94A5-7140FB03A690}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2D4ADD5C-5736-44F3-BC53-BBEC82215DE9}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
