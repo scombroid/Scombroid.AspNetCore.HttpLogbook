@@ -4,6 +4,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>Scombroid.AspNetCore.HttpLogbook</AssemblyName>
     <RootNamespace>Scombroid.AspNetCore.HttpLogbook</RootNamespace>
+    <Authors>Scombroid</Authors>
+    <Company>Scombroid Pty Ltd</Company>
+    <Description>A library to provide logging for ASP.NET Core http request and response</Description>
+    <PackageProjectUrl>https://github.com/scombroid/Scombroid.AspNetCore.HttpLogbook</PackageProjectUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
