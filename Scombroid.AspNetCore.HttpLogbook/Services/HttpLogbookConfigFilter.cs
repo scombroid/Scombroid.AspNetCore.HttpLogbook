@@ -9,7 +9,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
 {
     internal class HttpLogbookConfigFilter : IHttpLogbookFilter
     {
-        private readonly ILogger<HttpLogbookConfigFilter> Logger;
+        private readonly ILogger Logger;
         private HttpLogbookConfig config;
         public HttpLogbookConfigFilter(ILogger<HttpLogbookConfigFilter> logger, IOptionsMonitor<HttpLogbookConfig> configOption)
         {
