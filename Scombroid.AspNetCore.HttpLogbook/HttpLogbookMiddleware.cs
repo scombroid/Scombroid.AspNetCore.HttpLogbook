@@ -47,17 +47,18 @@ namespace Scombroid.AspNetCore.HttpLogbook
             string ipAddress = null;
             try
             {
-                var filter = LogbookFilter.Find(httpContext?.Request?.Path, httpContext?.Request?.Method);
-                
+                var path = httpContext?.Request?.Path;
+                var filter = LogbookFilter.Find(path, httpContext?.Request?.Method);
+
                 // process request
                 LogLevel requestLogLevel = (filter != null) ? filter.GetRequestLogLevel(): LogLevel.None;                
                 switch (requestLogLevel)
                 {
                     case LogLevel.Trace:
-                        await RequestTraceLogging(filter.Request, httpContext);
+                        await RequestTraceLogging(httpContext, path, filter.Request);
                         break;
                     case LogLevel.Information:
-                        RequestInfoLogging(httpContext);
+                        RequestInfoLogging(httpContext, path, filter.Request);
                         break;
                     case LogLevel.None:
                     default:
@@ -69,10 +70,10 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 switch (responseLogLevel)
                 {
                     case LogLevel.Trace:
-                        await ResponseTraceLogging(filter.Response, httpContext, sw);
+                        await ResponseTraceLogging(httpContext, path, filter.Response, sw);
                         break;
                     case LogLevel.Information:
-                        await ResponseInfoLogging(httpContext, sw);
+                        await ResponseInfoLogging(httpContext, path, filter.Response, sw);
                         break;
                     case LogLevel.None:
                     default:
@@ -87,29 +88,53 @@ namespace Scombroid.AspNetCore.HttpLogbook
             }
         }
 
-        private void RequestInfoLogging(HttpContext httpContext)
+        private void RequestInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
         {
-            LogbookService.LogRequest(LogLevel.Information, httpContext.Request);
+            LogbookService.LogRequest(new RequestLogContext()
+            {
+                LogLevel = LogLevel.Information,
+                FilterPath = path?.Value,
+                MessageFilter = messageFilter,
+                HttpRequest = httpContext.Request,
+                Body = null
+            });
         }
 
-        private async Task RequestTraceLogging(HttpLogbookMessageFilter rule, HttpContext httpContext)
+        private async Task RequestTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
         {
             string requestBody = await GetRequestBodyAsync(httpContext.Request);
-            if (rule != null)
+            if (messageFilter != null)
             {
-                rule.ApplyBodyMask(ref requestBody);
+                messageFilter.ApplyBodyMask(ref requestBody);
             }
-            LogbookService.LogRequest(LogLevel.Trace, httpContext.Request, requestBody);
+
+            LogbookService.LogRequest(new RequestLogContext()
+            {
+                LogLevel = LogLevel.Trace,
+                FilterPath = path?.Value,
+                MessageFilter = messageFilter,
+                HttpRequest = httpContext.Request,
+                Body = requestBody
+            });
         }
 
-        private async Task ResponseInfoLogging(HttpContext httpContext, Stopwatch sw)
+        private async Task ResponseInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
         {
             await _next(httpContext);
             sw.Stop();
-            LogbookService.LogResponse(LogLevel.Information, httpContext.Response, sw.Elapsed);
+
+            LogbookService.LogResponse(new ResponseLogContext()
+            {
+                LogLevel = LogLevel.Information,
+                FilterPath = path?.Value,
+                MessageFilter = messageFilter,
+                HttpResponse = httpContext.Response,
+                Elapsed = sw.Elapsed,
+                Body = null
+            });
         }
 
-        private async Task ResponseTraceLogging(HttpLogbookMessageFilter rule, HttpContext httpContext, Stopwatch sw)
+        private async Task ResponseTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
         {
             Stream originalResponseBody = httpContext.Response.Body;
             try
@@ -125,12 +150,21 @@ namespace Scombroid.AspNetCore.HttpLogbook
                     await newResponseBody.CopyToAsync(originalResponseBody);
                     // Get response body in text format
                     string responseBody = GetResponseBody(httpContext.Response, BufferSize);
-                    if (rule != null)
+                    if (messageFilter != null)
                     {
-                        rule.ApplyBodyMask(ref responseBody);
+                        messageFilter.ApplyBodyMask(ref responseBody);
                     }
                     sw.Stop();
-                    LogbookService.LogResponse(LogLevel.Trace, httpContext.Response, sw.Elapsed, httpContext.Response.ContentType, responseBody);
+
+                    LogbookService.LogResponse(new ResponseLogContext()
+                    {
+                        LogLevel = LogLevel.Trace,
+                        FilterPath = path?.Value,
+                        MessageFilter = messageFilter,
+                        HttpResponse = httpContext.Response,
+                        Elapsed = sw.Elapsed,
+                        Body = responseBody
+                    });
                 }
             }
             finally

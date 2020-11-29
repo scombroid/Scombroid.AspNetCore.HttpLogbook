@@ -17,7 +17,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
             },
             Response = new HttpLogbookMessageFilter()
             {
-                LogLevel = LogLevel.None
+                LogLevel = LogLevel.Trace
             }
         };
 

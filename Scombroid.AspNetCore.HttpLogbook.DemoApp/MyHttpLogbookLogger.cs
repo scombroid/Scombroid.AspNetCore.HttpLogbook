@@ -18,9 +18,9 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
             Logger = logger;
         }
 
-        public void LogRequest(LogLevel level, HttpRequest request)
+        public void LogRequest(RequestLogContext context)
         {
-            LogRequest(level, request, null);
+            LogRequest(context.LogLevel, context.HttpRequest, context.Body);
         }
 
         public void LogRequest(LogLevel level, HttpRequest request, string body)
@@ -32,15 +32,15 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
                 Logger.LogInformation(TraceRequestMessageTemplate, ipAddress, request.Method, request.Path, request.ContentType, body);
         }
 
-        public void LogResponse(LogLevel level, HttpResponse response, TimeSpan timeTaken)
+        public void LogResponse(ResponseLogContext context)
         {
-            LogResponse(level, response, timeTaken, null, null);
+            LogResponse(context.LogLevel, context.HttpResponse, context.Elapsed, context.HttpResponse.ContentType, context.Body);
         }
 
         public void LogResponse(LogLevel level, HttpResponse response, TimeSpan timeTaken, string contentType, string body)
         {
             var ipAddress = response?.HttpContext?.Connection?.RemoteIpAddress;
-            if (contentType == null && body == null)
+            if (level == LogLevel.Information)
                 Logger.LogInformation(ResponseMessageTemplate, ipAddress, response.StatusCode, timeTaken.TotalMilliseconds.ToString("0.0000"));
             else
                 Logger.LogInformation(TraceResponseMessageTemplate, ipAddress, response.StatusCode, timeTaken.TotalMilliseconds.ToString("0.0000"), contentType, body);
