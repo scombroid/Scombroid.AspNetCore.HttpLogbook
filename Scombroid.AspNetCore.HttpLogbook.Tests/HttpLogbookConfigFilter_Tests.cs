@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Scombroid.AspNetCore.HttpLogbook.Filters;
-using System.IO;
 using Xunit;
 
 namespace Scombroid.AspNetCore.HttpLogbook.Tests
@@ -36,7 +35,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
         }
 
         [Fact]
-        public void SimpleTest()
+        public void DefaultMethodTest()
         {
             var optionMonitorMock = CreateConfigOptionsMonitor();
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
@@ -54,6 +53,35 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             Assert.NotNull(filter);
             Assert.Equal(HttpLogbook.LogLevel.Information, filter.Request.LogLevel);
         }
+
+        [Fact]
+        public void DefaultPathTest()
+        {
+            var optionMonitorMock = CreateConfigOptionsMonitor();
+            var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
+            var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
+
+            var filter = httpLogbookConfigFilter.Find("/doesnotexists", "POST");
+            Assert.NotNull(filter);
+            Assert.Equal(HttpLogbook.LogLevel.Information, filter.Request.LogLevel);
+
+            filter = httpLogbookConfigFilter.Find("/doesnotexists", "PUT");
+            Assert.NotNull(filter);
+            Assert.Equal(HttpLogbook.LogLevel.Information, filter.Request.LogLevel);
+
+            filter = httpLogbookConfigFilter.Find("/doesnotexists", "GET");
+            Assert.NotNull(filter);
+            Assert.Equal(HttpLogbook.LogLevel.Information, filter.Request.LogLevel);
+
+            filter = httpLogbookConfigFilter.Find("/doesnotexists", "DELETE");
+            Assert.NotNull(filter);
+            Assert.Equal(HttpLogbook.LogLevel.Information, filter.Request.LogLevel);
+
+            filter = httpLogbookConfigFilter.Find("/doesnotexists", "PATCH");
+            Assert.NotNull(filter);
+            Assert.Equal(HttpLogbook.LogLevel.Information, filter.Request.LogLevel);
+        }
+
 
         [Fact]
         public void PostOnlyTest()
