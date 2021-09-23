@@ -7,27 +7,28 @@ namespace Scombroid.AspNetCore.HttpLogbook.Filters
 {
     public class HttpLogbookMethodFilter
     {
+        public bool Enabled { get; set; } = false;
         public HttpLogbookMessageFilter Request { get; set; }
             = new HttpLogbookMessageFilter();
         public HttpLogbookMessageFilter Response { get; set; }
             = new HttpLogbookMessageFilter();
 
-        public LogLevel GetRequestLogLevel()
+        public bool IsRequestBodyEnabled()
         {
             if (Request == null)
             {
-                return LogLevel.None;
+                return false;
             }
-            return Request.LogLevel;
+            return Request.Body;
         }
 
-        public LogLevel GetResponseLogLevel()
+        public bool IsResponseBodyEnabled()
         {
             if (Response == null)
             {
-                return LogLevel.None;
+                return false;
             }
-            return Response.LogLevel;
+            return Response.Body;
         }
     }
 }

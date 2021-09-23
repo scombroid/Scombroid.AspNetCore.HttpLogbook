@@ -10,7 +10,7 @@
     <PackageProjectUrl>https://github.com/scombroid/Scombroid.AspNetCore.HttpLogbook</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.0.4</Version>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

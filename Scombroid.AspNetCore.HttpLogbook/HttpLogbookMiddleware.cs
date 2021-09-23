@@ -1,18 +1,17 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
+using Scombroid.AspNetCore.HttpLogbook.Filters;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using Scombroid.AspNetCore.HttpLogbook.Filters;
 
 namespace Scombroid.AspNetCore.HttpLogbook
 {
     internal class HttpLogbookMiddleware
     {
-        const string ExceptionMessageTemplate = "Exception {IpAddress} {Elapsed}ms {@Exception}";
+        const string ExceptionMessageTemplate = "Exception {Elapsed}ms {@Exception}";
         private readonly RequestDelegate _next;
         private readonly ILogger Logger;
         private readonly RecyclableMemoryStreamManager RecyclableMemoryStreamManager;
@@ -44,97 +43,110 @@ namespace Scombroid.AspNetCore.HttpLogbook
         {
             if (httpContext == null) throw new ArgumentNullException(nameof(httpContext));
             var sw = Stopwatch.StartNew();
-            string ipAddress = null;
             try
             {
                 var path = httpContext?.Request?.Path;
                 var filter = LogbookFilter.Find(path, httpContext?.Request?.Method);
 
-                // process request
-                LogLevel requestLogLevel = (filter != null) ? filter.GetRequestLogLevel(): LogLevel.None;                
-                switch (requestLogLevel)
+                // Get request body
+                var requestBody = default(string);
+                if (filter != null && filter.IsRequestBodyEnabled())
                 {
-                    case LogLevel.Trace:
-                        await RequestTraceLogging(httpContext, path, filter.Request);
-                        break;
-                    case LogLevel.Information:
-                        RequestInfoLogging(httpContext, path, filter.Request);
-                        break;
-                    case LogLevel.None:
-                    default:
-                        break;
+                    requestBody = await GetRequestBodyAsync(httpContext.Request);
+                    if (filter?.Request != null)
+                    {
+                        filter.Request.ApplyBodyMask(ref requestBody);
+                    }
                 }
 
-                // process response
-                LogLevel responseLogLevel = (filter != null) ? filter.GetResponseLogLevel() : LogLevel.None;
-                switch (responseLogLevel)
+                // process
+                if (filter != null && filter.Enabled)
                 {
-                    case LogLevel.Trace:
-                        await ResponseTraceLogging(httpContext, path, filter.Response, sw);
-                        break;
-                    case LogLevel.Information:
-                        await ResponseInfoLogging(httpContext, path, filter.Response, sw);
-                        break;
-                    case LogLevel.None:
-                    default:
-                        await _next(httpContext);
-                        break;
+                    if (filter.IsResponseBodyEnabled())
+                    {
+                        await ResponseBodyLogging(httpContext, path, filter.Response, sw, requestBody);
+                    }
+                    else
+                    {
+                        await ResponseLogging(httpContext, path, filter.Response, sw, requestBody);
+                    }
                 }
+                else
+                {
+                    await _next(httpContext);
+                }
+
+                //LogLevel responseLogLevel = (filter != null) ? filter.GetResponseLogLevel() : LogLevel.None;
+                //switch (responseLogLevel)
+                //{
+                //    case LogLevel.Trace:
+                //        await ResponseTraceLogging(httpContext, path, filter.Response, sw);
+                //        break;
+                //    case LogLevel.Information:
+                //        await ResponseInfoLogging(httpContext, path, filter.Response, sw);
+                //        break;
+                //    case LogLevel.None:
+                //    default:
+                //        await _next(httpContext);
+                //        break;
+                //}
 
             }
             // LogException() will always returns false, to allow the exception to bubble up
-            catch (Exception ex) when (LogException(ipAddress, httpContext, ex, sw))
+            catch (Exception ex) when (LogException(httpContext, ex, sw))
             {
             }
         }
 
-        private void RequestInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
-        {
-            LogbookService.LogRequest(new RequestLogContext()
-            {
-                LogLevel = LogLevel.Information,
-                FilterPath = path?.Value,
-                MessageFilter = messageFilter,
-                HttpRequest = httpContext.Request,
-                Body = null
-            });
-        }
+        //private void RequestInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
+        //{
+        //    LogbookService.LogRequest(new RequestLogContext()
+        //    {
+        //        LogLevel = LogLevel.Information,
+        //        FilterPath = path?.Value,
+        //        MessageFilter = messageFilter,
+        //        HttpRequest = httpContext.Request,
+        //        Body = null
+        //    });
+        //}
 
-        private async Task RequestTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
-        {
-            string requestBody = await GetRequestBodyAsync(httpContext.Request);
-            if (messageFilter != null)
-            {
-                messageFilter.ApplyBodyMask(ref requestBody);
-            }
+        //private async Task RequestTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
+        //{
+        //    string requestBody = await GetRequestBodyAsync(httpContext.Request);
+        //    if (messageFilter != null)
+        //    {
+        //        messageFilter.ApplyBodyMask(ref requestBody);
+        //    }
 
-            LogbookService.LogRequest(new RequestLogContext()
-            {
-                LogLevel = LogLevel.Trace,
-                FilterPath = path?.Value,
-                MessageFilter = messageFilter,
-                HttpRequest = httpContext.Request,
-                Body = requestBody
-            });
-        }
+        //    LogbookService.LogRequest(new RequestLogContext()
+        //    {
+        //        LogLevel = LogLevel.Trace,
+        //        FilterPath = path?.Value,
+        //        MessageFilter = messageFilter,
+        //        HttpRequest = httpContext.Request,
+        //        Body = requestBody
+        //    });
+        //}
 
-        private async Task ResponseInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
+        private async Task ResponseLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
         {
             await _next(httpContext);
             sw.Stop();
 
-            LogbookService.LogResponse(new ResponseLogContext()
+            LogbookService.Log(new LogContext()
             {
-                LogLevel = LogLevel.Information,
+                LogLevel = LogbookFilter.LogLevel,
                 FilterPath = path?.Value,
                 MessageFilter = messageFilter,
+                HttpRequest = httpContext.Request,
+                RequestBody = requestBody,
                 HttpResponse = httpContext.Response,
-                Elapsed = sw.Elapsed,
-                Body = null
+                ResponseBody = null,
+                Elapsed = sw.Elapsed                
             });
         }
 
-        private async Task ResponseTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
+        private async Task ResponseBodyLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
         {
             Stream originalResponseBody = httpContext.Response.Body;
             try
@@ -156,14 +168,16 @@ namespace Scombroid.AspNetCore.HttpLogbook
                     }
                     sw.Stop();
 
-                    LogbookService.LogResponse(new ResponseLogContext()
+                    LogbookService.Log(new LogContext()
                     {
-                        LogLevel = LogLevel.Trace,
+                        LogLevel = LogbookFilter.LogLevel,
                         FilterPath = path?.Value,
                         MessageFilter = messageFilter,
+                        HttpRequest = httpContext.Request,
+                        RequestBody = requestBody,
                         HttpResponse = httpContext.Response,
-                        Elapsed = sw.Elapsed,
-                        Body = responseBody
+                        ResponseBody = responseBody,
+                        Elapsed = sw.Elapsed                        
                     });
                 }
             }
@@ -173,10 +187,10 @@ namespace Scombroid.AspNetCore.HttpLogbook
             }
         }
 
-        private bool LogException(string ipAddress, HttpContext httpContext, Exception ex, Stopwatch sw)
+        private bool LogException(HttpContext httpContext, Exception ex, Stopwatch sw)
         {
             sw.Stop();
-            Logger.LogError(ex, ExceptionMessageTemplate, ipAddress, sw.ElapsedMilliseconds, ex);
+            Logger.LogError(ex, ExceptionMessageTemplate, sw.ElapsedMilliseconds, ex);
             return false; // LogException() will always returns false, to allow the exception to bubble up
         }
 

@@ -5,14 +5,8 @@ namespace Scombroid.AspNetCore.HttpLogbook.Filters
 {
     public class HttpLogbookMessageFilter
     {
-        public LogLevel LogLevel { get; set; }
-        public HttpLogbookMaskFilter[] BodyMasks { get; set; }
-
-        public HttpLogbookMessageFilter()
-        {
-            LogLevel = LogLevel.Information;
-            BodyMasks = null;
-        }
+        public bool Body { get; set; } = false;
+        public HttpLogbookMaskFilter[] BodyMasks { get; set; } = null;
 
         public void ApplyBodyMask(ref string body)
         {

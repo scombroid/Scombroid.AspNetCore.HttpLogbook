@@ -1,23 +1,22 @@
 ﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Scombroid.AspNetCore.HttpLogbook.Filters;
 
 namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
 {
     public class MyHttpLogbookFilter : IHttpLogbookFilter
     {
+        public LogLevel LogLevel => LogLevel.Information;
+
         private HttpLogbookMethodFilter MyRule { get; set; } = new HttpLogbookMethodFilter()
         {
             Request = new HttpLogbookMessageFilter( )
             {
-                LogLevel = LogLevel.Trace
+                Body = true
             },
             Response = new HttpLogbookMessageFilter()
             {
-                LogLevel = LogLevel.Trace
+                Body = true
             }
         };
 
