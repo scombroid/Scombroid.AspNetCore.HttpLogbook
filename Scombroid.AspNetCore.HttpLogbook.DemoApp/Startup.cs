@@ -47,9 +47,10 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
                 app.UseDeveloperExceptionPage();
             }
 
+            var config = BindConfig<HttpLogbook.Filters.HttpLogbookConfig>("HttpLogbook");
             app.UseLogbook(new HttpLogbookMiddlewareOptions()
             {
-                BufferSize = 1024
+                BufferSize = config.StreamBufferSize
             });
 
             app.UseHttpsRedirection();
@@ -62,6 +63,17 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
             {
                 endpoints.MapControllers();
             });
+        }
+
+
+
+        protected T BindConfig<T>(string key)
+            where T : class, new()
+        {
+            var configSection = Configuration.GetSection(key);
+            T config = new T();
+            configSection.Bind(config);
+            return config;
         }
     }
 }

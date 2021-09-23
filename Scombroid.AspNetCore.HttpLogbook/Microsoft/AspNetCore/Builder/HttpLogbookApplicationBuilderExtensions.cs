@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Builder
             var loggerFactory = app.ApplicationServices.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
             if (loggerFactory == null) throw new ArgumentNullException(nameof(loggerFactory));
 
-            var logger = loggerFactory.CreateLogger("Logbook.Startup");
+            var logger = loggerFactory.CreateLogger("HttpLogbook.Startup");
 
             var scopeFactory = app.ApplicationServices.GetService<IServiceScopeFactory>();
 
