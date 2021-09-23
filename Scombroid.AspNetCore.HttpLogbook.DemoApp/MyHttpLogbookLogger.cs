@@ -19,38 +19,38 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
         {
             var scopes = new Dictionary<string, object>
             {
-                ["IpAddress"] = context.HttpRequest?.HttpContext?.Connection?.RemoteIpAddress,
+                ["IpAddress"] = context.HttpContext?.Connection?.RemoteIpAddress,
                 //["Headers"] = context.HttpRequest?.Headers,
-                ["RequestMethod"] = context.HttpRequest?.Method,
-                ["RequestPath"] = context.HttpRequest?.Path,
-                ["ResponseContentType"] = context.HttpRequest?.ContentType,
-                ["QueryString"] = context.HttpRequest?.QueryString,
+                ["Method"] = context.HttpContext?.Request?.Method,
+                ["Path"] = context.HttpContext?.Request?.Path,
+                ["ContentType"] = context.HttpContext?.Request?.ContentType,
+                ["QueryString"] = context.HttpContext?.Request?.QueryString,
                 ["RequestBody"] = context.RequestBody,
                 ["ResponseBody"] = context.ResponseBody,
-                ["StatusCode"] = context.HttpResponse?.StatusCode,
+                ["StatusCode"] = context.HttpContext?.Response?.StatusCode,
                 ["Elapsed"] = context.Elapsed
             };
 
             using (Logger.BeginScope(scopes))
             {
-                const string RequestMessageTemplate = "##MY## {RequestMethod} {RequestPath} {StatusCode} {@scopes}";
+                const string RequestMessageTemplate = "##MY## {Method} {Path} {StatusCode} {@scopes}";
                 Logger.LogInformation(RequestMessageTemplate,
-                    context.HttpRequest?.Method,
-                    context.HttpRequest?.Path,
-                    context.HttpResponse?.StatusCode,
+                    context.HttpContext?.Request?.Method,
+                    context.HttpContext?.Request?.Path,
+                    context.HttpContext?.Response?.StatusCode,
                     scopes);
             }
         }
 
-        public void LogException(Exception ex, HttpContext httpContext, TimeSpan elapsed)
+        public void LogException(LogContext context, Exception ex)
         {
-            const string ExceptionTemplate = "##MY## {RequestMethod} {RequestPath} throws exception {Exception}";
+            const string ExceptionTemplate = "##MY## {Method} {Path} {StatusCode} throws exception {Exception}";
             Logger.LogError(ex,
                     ExceptionTemplate,
-                    httpContext.Request?.Method,
-                    httpContext.Request?.Path,
-                    httpContext.Response?.StatusCode,
-                    ex );    
+                    context.HttpContext?.Request?.Method,
+                    context.HttpContext?.Request?.Path,
+                    context.HttpContext?.Response?.StatusCode,
+                    ex);
         }
     }
 }

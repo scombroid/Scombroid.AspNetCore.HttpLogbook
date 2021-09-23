@@ -20,20 +20,21 @@ namespace Scombroid.AspNetCore.HttpLogbook.Services
             const string RequestMessageTemplate = "{RequestMethod} {RequestPath} {StatusCode} {Elapsed}ms";
             Logger.Log(context.LogLevel, 
                 RequestMessageTemplate,
-                context.HttpRequest?.Method,
-                context.HttpRequest?.Path,
-                context.HttpResponse?.StatusCode,
+                context.HttpContext?.Request?.Method,
+                context.HttpContext?.Request?.Path,
+                context.HttpContext?.Response?.StatusCode,
                 context.Elapsed.TotalMilliseconds);
         }
 
-        public void LogException(Exception ex, HttpContext httpContext, TimeSpan elapsed)
+
+        public void LogException(LogContext context, Exception ex)
         {
-            const string ExceptionTemplate = "{RequestMethod} {RequestPath} throws exception {Exception}";
+            const string ExceptionTemplate = "{RequestMethod} {RequestPath} {StatusCode} throws exception {Exception}";
             Logger.LogError(ex,
                     ExceptionTemplate,
-                    httpContext.Request?.Method,
-                    httpContext.Request?.Path,
-                    httpContext.Response?.StatusCode,
+                    context.HttpContext?.Request?.Method,
+                    context.HttpContext?.Request?.Path,
+                    context.HttpContext?.Response?.StatusCode,
                     ex);
         }
     }
