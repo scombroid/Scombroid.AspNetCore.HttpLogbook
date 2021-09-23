@@ -9,6 +9,8 @@ namespace Scombroid.AspNetCore.HttpLogbook.Filters
 
         public Dictionary<string, HttpLogbookPathFilter> Paths { get; set; }
             = new Dictionary<string, HttpLogbookPathFilter>(StringComparer.OrdinalIgnoreCase);
+
+        public Dictionary<string, string> Options { get; set; }
     }
 }
 
