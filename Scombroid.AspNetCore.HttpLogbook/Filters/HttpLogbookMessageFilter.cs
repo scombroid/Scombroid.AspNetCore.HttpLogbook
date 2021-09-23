@@ -5,6 +5,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.Filters
 {
     public class HttpLogbookMessageFilter
     {
+        public bool Headers { get; set; } = false;
         public bool Body { get; set; } = false;
         public HttpLogbookMaskFilter[] BodyMasks { get; set; } = null;
 

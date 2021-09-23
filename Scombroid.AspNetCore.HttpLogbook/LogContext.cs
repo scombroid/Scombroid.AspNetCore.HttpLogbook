@@ -8,7 +8,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
     {
         public Microsoft.Extensions.Logging.LogLevel LogLevel { get; set; }
         public string FilterPath { get; set; }
-        public HttpLogbookMessageFilter MessageFilter { get; set; }        
+        public HttpLogbookMethodFilter Filter { get; set; }        
         public HttpRequest HttpRequest { get; set; }
         public string RequestBody { get; set; }
         public HttpResponse HttpResponse { get; set; }

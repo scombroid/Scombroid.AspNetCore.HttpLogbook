@@ -170,18 +170,23 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var filter = httpLogbookConfigFilter.Find("/MixMethods", "GET");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
+            Assert.True(filter.QueryString);
             Assert.True(filter.Request.Body);
+            Assert.True(filter.Request.Headers);
             Assert.False(filter.Response.Body);
+            Assert.False(filter.Response.Headers);
 
             filter = httpLogbookConfigFilter.Find("/MixMethods", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
+            Assert.False(filter.QueryString);
             Assert.False(filter.Request.Body);
             Assert.True(filter.Response.Body);
 
             filter = httpLogbookConfigFilter.Find("/MixMethods", "DELETE");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
+            Assert.False(filter.QueryString);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
         }

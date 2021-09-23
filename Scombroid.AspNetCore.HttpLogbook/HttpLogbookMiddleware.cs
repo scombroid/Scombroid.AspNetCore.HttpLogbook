@@ -41,7 +41,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
 
                 // Get request body
                 var requestBody = default(string);
-                if (filter != null && filter.IsRequestBodyEnabled())
+                if (filter != null && (filter?.Request?.Body).GetValueOrDefault(false))
                 {
                     requestBody = await GetRequestBodyAsync(httpContext.Request, bufferSize);
                     if (filter?.Request != null)
@@ -53,13 +53,13 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 // process
                 if (filter != null && filter.Enabled)
                 {
-                    if (filter.IsResponseBodyEnabled())
+                    if ((filter?.Response?.Body).GetValueOrDefault(false))
                     {
-                        await ResponseBodyLogging(bufferSize, logLevel, httpContext, path, filter.Response, sw, requestBody);
+                        await ResponseBodyLogging(bufferSize, logLevel, httpContext, path, filter, sw, requestBody);
                     }
                     else
                     {
-                        await ResponseLogging(logLevel, httpContext, path, filter.Response, sw, requestBody);
+                        await ResponseLogging(logLevel, httpContext, path, filter, sw, requestBody);
                     }
                 }
                 else
@@ -73,7 +73,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
             }
         }
 
-        private async Task ResponseLogging(LogLevel logLevel, HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
+        private async Task ResponseLogging(LogLevel logLevel, HttpContext httpContext, PathString? path, HttpLogbookMethodFilter fitler, Stopwatch sw, string requestBody)
         {
             await _next(httpContext);
             sw.Stop();
@@ -82,7 +82,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
             {
                 LogLevel = logLevel,
                 FilterPath = path?.Value,
-                MessageFilter = messageFilter,
+                Filter = fitler,
                 HttpRequest = httpContext.Request,
                 RequestBody = requestBody,
                 HttpResponse = httpContext.Response,
@@ -91,7 +91,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
             });
         }
 
-        private async Task ResponseBodyLogging(int bufferSize, LogLevel logLevel, HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
+        private async Task ResponseBodyLogging(int bufferSize, LogLevel logLevel, HttpContext httpContext, PathString? path, HttpLogbookMethodFilter fitler, Stopwatch sw, string requestBody)
         {
             Stream originalResponseBody = httpContext.Response.Body;
             try
@@ -107,9 +107,9 @@ namespace Scombroid.AspNetCore.HttpLogbook
                     await newResponseBody.CopyToAsync(originalResponseBody);
                     // Get response body in text format
                     string responseBody = GetResponseBody(httpContext.Response, bufferSize);
-                    if (messageFilter != null)
+                    if (fitler?.Response != null)
                     {
-                        messageFilter.ApplyBodyMask(ref responseBody);
+                        fitler.Response.ApplyBodyMask(ref responseBody);
                     }
                     sw.Stop();
 
@@ -117,7 +117,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
                     {
                         LogLevel = logLevel,
                         FilterPath = path?.Value,
-                        MessageFilter = messageFilter,
+                        Filter = fitler,
                         HttpRequest = httpContext.Request,
                         RequestBody = requestBody,
                         HttpResponse = httpContext.Response,
