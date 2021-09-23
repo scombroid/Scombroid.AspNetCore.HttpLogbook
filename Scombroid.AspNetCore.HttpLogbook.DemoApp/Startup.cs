@@ -47,11 +47,10 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseLogbook();
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
+            app.UseLogbook();
 
             app.UseAuthorization();
 
