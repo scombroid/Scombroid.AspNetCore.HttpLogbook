@@ -25,5 +25,16 @@ namespace Scombroid.AspNetCore.HttpLogbook.Services
                 context.HttpResponse?.StatusCode,
                 context.Elapsed.TotalMilliseconds);
         }
+
+        public void LogException(Exception ex, HttpContext httpContext, TimeSpan elapsed)
+        {
+            const string ExceptionTemplate = "{RequestMethod} {RequestPath} throws exception {Exception}";
+            Logger.LogError(ex,
+                    ExceptionTemplate,
+                    httpContext.Request?.Method,
+                    httpContext.Request?.Path,
+                    httpContext.Response?.StatusCode,
+                    ex);
+        }
     }
 }

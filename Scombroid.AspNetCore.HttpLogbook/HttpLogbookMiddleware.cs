@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IO;
 using Scombroid.AspNetCore.HttpLogbook.Filters;
 using System;
@@ -11,36 +12,26 @@ namespace Scombroid.AspNetCore.HttpLogbook
 {
     internal class HttpLogbookMiddleware
     {
-        const string ExceptionMessageTemplate = "Exception {Elapsed}ms {@Exception}";
         private readonly RequestDelegate _next;
-        private readonly ILogger Logger;
         private readonly RecyclableMemoryStreamManager RecyclableMemoryStreamManager;
         private readonly IHttpLogbookFilter LogbookFilter;
         private readonly IHttpLogbookLogger LogbookService;
-        private readonly HttpLogbookMiddlewareOptions Options;
-        public HttpLogbookMiddleware(RequestDelegate next, ILogger<HttpLogbookMiddleware> logger,
+        public HttpLogbookMiddleware(RequestDelegate next,
             IHttpLogbookFilter logbookFilter,
-            IHttpLogbookLogger logbookService,
-            HttpLogbookMiddlewareOptions options)
+            IHttpLogbookLogger logbookService)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
-            Logger = logger;
             RecyclableMemoryStreamManager = new RecyclableMemoryStreamManager();
             LogbookFilter = logbookFilter;
             LogbookService = logbookService;
-            Options = options;
         }
 
-        private int BufferSize
+        public async Task Invoke(HttpContext httpContext, IOptions<HttpLogbookConfig> configOption)
         {
-            get 
-            {
-                return Options.BufferSize;
-            }
-        }
+            var config = configOption.Value;
+            var bufferSize = config.StreamBufferSize;
+            var logLevel = config.LogLevel;
 
-        public async Task Invoke(HttpContext httpContext)
-        {
             if (httpContext == null) throw new ArgumentNullException(nameof(httpContext));
             var sw = Stopwatch.StartNew();
             try
@@ -52,7 +43,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 var requestBody = default(string);
                 if (filter != null && filter.IsRequestBodyEnabled())
                 {
-                    requestBody = await GetRequestBodyAsync(httpContext.Request);
+                    requestBody = await GetRequestBodyAsync(httpContext.Request, bufferSize);
                     if (filter?.Request != null)
                     {
                         filter.Request.ApplyBodyMask(ref requestBody);
@@ -64,33 +55,17 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 {
                     if (filter.IsResponseBodyEnabled())
                     {
-                        await ResponseBodyLogging(httpContext, path, filter.Response, sw, requestBody);
+                        await ResponseBodyLogging(bufferSize, logLevel, httpContext, path, filter.Response, sw, requestBody);
                     }
                     else
                     {
-                        await ResponseLogging(httpContext, path, filter.Response, sw, requestBody);
+                        await ResponseLogging(logLevel, httpContext, path, filter.Response, sw, requestBody);
                     }
                 }
                 else
                 {
                     await _next(httpContext);
                 }
-
-                //LogLevel responseLogLevel = (filter != null) ? filter.GetResponseLogLevel() : LogLevel.None;
-                //switch (responseLogLevel)
-                //{
-                //    case LogLevel.Trace:
-                //        await ResponseTraceLogging(httpContext, path, filter.Response, sw);
-                //        break;
-                //    case LogLevel.Information:
-                //        await ResponseInfoLogging(httpContext, path, filter.Response, sw);
-                //        break;
-                //    case LogLevel.None:
-                //    default:
-                //        await _next(httpContext);
-                //        break;
-                //}
-
             }
             // LogException() will always returns false, to allow the exception to bubble up
             catch (Exception ex) when (LogException(httpContext, ex, sw))
@@ -98,44 +73,14 @@ namespace Scombroid.AspNetCore.HttpLogbook
             }
         }
 
-        //private void RequestInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
-        //{
-        //    LogbookService.LogRequest(new RequestLogContext()
-        //    {
-        //        LogLevel = LogLevel.Information,
-        //        FilterPath = path?.Value,
-        //        MessageFilter = messageFilter,
-        //        HttpRequest = httpContext.Request,
-        //        Body = null
-        //    });
-        //}
-
-        //private async Task RequestTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter)
-        //{
-        //    string requestBody = await GetRequestBodyAsync(httpContext.Request);
-        //    if (messageFilter != null)
-        //    {
-        //        messageFilter.ApplyBodyMask(ref requestBody);
-        //    }
-
-        //    LogbookService.LogRequest(new RequestLogContext()
-        //    {
-        //        LogLevel = LogLevel.Trace,
-        //        FilterPath = path?.Value,
-        //        MessageFilter = messageFilter,
-        //        HttpRequest = httpContext.Request,
-        //        Body = requestBody
-        //    });
-        //}
-
-        private async Task ResponseLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
+        private async Task ResponseLogging(LogLevel logLevel, HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
         {
             await _next(httpContext);
             sw.Stop();
 
             LogbookService.Log(new LogContext()
             {
-                LogLevel = LogbookFilter.LogLevel,
+                LogLevel = logLevel,
                 FilterPath = path?.Value,
                 MessageFilter = messageFilter,
                 HttpRequest = httpContext.Request,
@@ -146,7 +91,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
             });
         }
 
-        private async Task ResponseBodyLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
+        private async Task ResponseBodyLogging(int bufferSize, LogLevel logLevel, HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw, string requestBody)
         {
             Stream originalResponseBody = httpContext.Response.Body;
             try
@@ -161,7 +106,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
                     // Copy the response body to the original body stream
                     await newResponseBody.CopyToAsync(originalResponseBody);
                     // Get response body in text format
-                    string responseBody = GetResponseBody(httpContext.Response, BufferSize);
+                    string responseBody = GetResponseBody(httpContext.Response, bufferSize);
                     if (messageFilter != null)
                     {
                         messageFilter.ApplyBodyMask(ref responseBody);
@@ -170,7 +115,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
 
                     LogbookService.Log(new LogContext()
                     {
-                        LogLevel = LogbookFilter.LogLevel,
+                        LogLevel = logLevel,
                         FilterPath = path?.Value,
                         MessageFilter = messageFilter,
                         HttpRequest = httpContext.Request,
@@ -190,11 +135,11 @@ namespace Scombroid.AspNetCore.HttpLogbook
         private bool LogException(HttpContext httpContext, Exception ex, Stopwatch sw)
         {
             sw.Stop();
-            Logger.LogError(ex, ExceptionMessageTemplate, sw.ElapsedMilliseconds, ex);
+            LogbookService.LogException(ex, httpContext, sw.Elapsed);
             return false; // LogException() will always returns false, to allow the exception to bubble up
         }
 
-        private async Task<string> GetRequestBodyAsync(HttpRequest request)
+        private async Task<string> GetRequestBodyAsync(HttpRequest request, int bufferSize)
         {
             request.EnableBuffering();
             //request.EnableRewind();
@@ -202,7 +147,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
             {
                 await request.Body.CopyToAsync(requestStream);
                 request.Body.Seek(0, SeekOrigin.Begin);
-                return ReadStreamInChunks(requestStream, BufferSize);
+                return ReadStreamInChunks(requestStream, bufferSize);
             }
         }
 

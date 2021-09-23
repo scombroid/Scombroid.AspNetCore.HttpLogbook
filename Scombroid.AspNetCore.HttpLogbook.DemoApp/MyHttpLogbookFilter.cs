@@ -6,8 +6,6 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
 {
     public class MyHttpLogbookFilter : IHttpLogbookFilter
     {
-        public LogLevel LogLevel => LogLevel.Information;
-
         private HttpLogbookMethodFilter MyRule { get; set; } = new HttpLogbookMethodFilter()
         {
             Request = new HttpLogbookMessageFilter( )

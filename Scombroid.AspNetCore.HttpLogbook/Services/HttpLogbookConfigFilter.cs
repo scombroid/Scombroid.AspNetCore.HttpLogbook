@@ -12,8 +12,6 @@ namespace Scombroid.AspNetCore.HttpLogbook
         private readonly ILogger Logger;
         private HttpLogbookConfig config;
 
-        public LogLevel LogLevel => config.LogLevel;
-
         public HttpLogbookConfigFilter(ILogger<HttpLogbookConfigFilter> logger, IOptionsMonitor<HttpLogbookConfig> configOption)
         {
             Logger = logger;
