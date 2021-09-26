@@ -29,14 +29,30 @@ namespace Scombroid.AspNetCore.HttpLogbook
         public async Task Invoke(HttpContext httpContext, IOptions<HttpLogbookConfig> configOption)
         {
             var config = configOption.Value;
-            var bufferSize = config.StreamBufferSize;
+            var bufferSize = (config?.StreamBufferSize).GetValueOrDefault(4096);
+            var logLevel = (config?.LogLevel).GetValueOrDefault(LogLevel.Information);
 
-            if (httpContext == null) throw new ArgumentNullException(nameof(httpContext));
+            if (httpContext == null)
+            {
+                throw new ArgumentNullException(nameof(httpContext));
+            }
+
+            if (logLevel == LogLevel.None)
+            {
+                await _next(httpContext); // disabled, do nothing
+            }
+            else
+            {
+                await Process(httpContext, logLevel, bufferSize);
+            }
+        }
+
+        private async Task Process(HttpContext httpContext, LogLevel logLevel, int bufferSize)
+        {
             var sw = Stopwatch.StartNew();
-
             var logContext = new LogContext()
             {
-                LogLevel = config.LogLevel
+                LogLevel = logLevel
             };
 
             try
@@ -74,7 +90,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
                         await _next(httpContext);
                     }
                     sw.Stop();
-                    
+
                     logContext.Elapsed = sw.Elapsed;
                     LogbookService.Log(logContext);
                 }
@@ -84,7 +100,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 }
             }
             // LogException() will always returns false, to allow the exception to bubble up
-            catch (Exception ex) when ( LogException(ex, sw, logContext) )
+            catch (Exception ex) when (LogException(ex, sw, logContext))
             {
             }
         }

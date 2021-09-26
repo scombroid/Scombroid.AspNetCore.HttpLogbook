@@ -7,7 +7,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.Filters
 {
     public class HttpLogbookMethodFilter
     {
-        public bool Enabled { get; set; } = false;
+        public bool Enabled { get; set; } = true;
         public bool QueryString { get; set; } = false;
         public HttpLogbookMessageFilter Request { get; set; }
             = new HttpLogbookMessageFilter();
