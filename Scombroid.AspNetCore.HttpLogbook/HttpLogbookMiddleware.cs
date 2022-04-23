@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Scombroid.AspNetCore.HttpLogbook.Filters;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace Scombroid.AspNetCore.HttpLogbook
 {
@@ -42,49 +44,96 @@ namespace Scombroid.AspNetCore.HttpLogbook
 
         public async Task Invoke(HttpContext httpContext)
         {
+            if (this.LogbookFilter.IsEnabled())
+            {
+                await Process(httpContext);
+            }
+            else
+            {
+                await _next(httpContext);
+            }
+        }
+
+        public async Task Process(HttpContext httpContext)
+        {
             if (httpContext == null) throw new ArgumentNullException(nameof(httpContext));
             var sw = Stopwatch.StartNew();
             string ipAddress = null;
+
+            Stream originalResponseBody = httpContext.Response.Body;
             try
             {
-                var path = httpContext?.Request?.Path;
-                var filter = LogbookFilter.Find(path, httpContext?.Request?.Method);
-
-                // process request
-                LogLevel requestLogLevel = (filter != null) ? filter.GetRequestLogLevel(): LogLevel.None;                
-                switch (requestLogLevel)
+                using (MemoryStream newResponseBody = RecyclableMemoryStreamManager.GetStream())
                 {
-                    case LogLevel.Trace:
-                        await RequestTraceLogging(httpContext, path, filter.Request);
-                        break;
-                    case LogLevel.Information:
-                        RequestInfoLogging(httpContext, path, filter.Request);
-                        break;
-                    case LogLevel.None:
-                    default:
-                        break;
-                }
+                    // swap the context response body stream with the memory stream
+                    httpContext.Response.Body = newResponseBody;
 
-                // process response
-                LogLevel responseLogLevel = (filter != null) ? filter.GetResponseLogLevel() : LogLevel.None;
-                switch (responseLogLevel)
-                {
-                    case LogLevel.Trace:
-                        await ResponseTraceLogging(httpContext, path, filter.Response, sw);
-                        break;
-                    case LogLevel.Information:
-                        await ResponseInfoLogging(httpContext, path, filter.Response, sw);
-                        break;
-                    case LogLevel.None:
-                    default:
-                        await _next(httpContext);
-                        break;
-                }
+                    // enable buffering
+                    // https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.httprequestrewindextensions.enablebuffering?view=aspnetcore-6.0#microsoft-aspnetcore-http-httprequestrewindextensions-enablebuffering(microsoft-aspnetcore-http-httprequest)
+                    // Ensure the requestBody can be read multiple times. Normally buffers request bodies in memory; writes requests larger than 30K bytes to disk.
+                    httpContext.Request.EnableBuffering();
 
+                    // execute next
+                    await _next(httpContext);
+
+                    // reset position to 0
+                    newResponseBody.Seek(0, SeekOrigin.Begin);
+
+                    // Copy the response body to the original body stream
+                    await newResponseBody.CopyToAsync(originalResponseBody);
+
+                    // default to request path
+                    var path = httpContext?.Request?.Path;
+
+                    // override with route template (if applicable)
+                    Endpoint endpoint = httpContext.Features.Get<IEndpointFeature>()?.Endpoint;
+                    ControllerActionDescriptor controllerActionDescriptor = endpoint?.Metadata?.GetMetadata<ControllerActionDescriptor>();
+                    if (controllerActionDescriptor?.AttributeRouteInfo != null)
+                    {
+                        // use route template
+                        path = ToPathString(controllerActionDescriptor.AttributeRouteInfo.Template ?? string.Empty);
+                    }
+
+                    var filter = LogbookFilter.Find(path, httpContext?.Request?.Method);
+
+                    // process request
+                    LogLevel requestLogLevel = (filter != null) ? filter.GetRequestLogLevel() : LogLevel.None;
+                    switch (requestLogLevel)
+                    {
+                        case LogLevel.Trace:
+                            await RequestTraceLogging(httpContext, path, filter.Request);
+                            break;
+                        case LogLevel.Information:
+                            RequestInfoLogging(httpContext, path, filter.Request);
+                            break;
+                        case LogLevel.None:
+                        default:
+                            break;
+                    }
+
+                    // process response
+                    LogLevel responseLogLevel = (filter != null) ? filter.GetResponseLogLevel() : LogLevel.None;
+                    switch (responseLogLevel)
+                    {
+                        case LogLevel.Trace:
+                            ResponseTraceLogging(httpContext, path, filter.Response, sw);
+                            break;
+                        case LogLevel.Information:
+                            ResponseInfoLogging(httpContext, path, filter.Response, sw);
+                            break;
+                        case LogLevel.None:
+                        default:
+                            break;
+                    }
+                }
             }
             // LogException() will always returns false, to allow the exception to bubble up
             catch (Exception ex) when (LogException(ipAddress, httpContext, ex, sw))
             {
+            }
+            finally
+            {
+                httpContext.Response.Body = originalResponseBody;
             }
         }
 
@@ -118,9 +167,8 @@ namespace Scombroid.AspNetCore.HttpLogbook
             });
         }
 
-        private async Task ResponseInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
+        private void ResponseInfoLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
         {
-            await _next(httpContext);
             sw.Stop();
 
             LogbookService.LogResponse(new ResponseLogContext()
@@ -134,43 +182,25 @@ namespace Scombroid.AspNetCore.HttpLogbook
             });
         }
 
-        private async Task ResponseTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
+        private void ResponseTraceLogging(HttpContext httpContext, PathString? path, HttpLogbookMessageFilter messageFilter, Stopwatch sw)
         {
-            Stream originalResponseBody = httpContext.Response.Body;
-            try
+            // Get response body in text format
+            string responseBody = GetResponseBody(httpContext.Response, BufferSize);
+            if (messageFilter != null)
             {
-                using (MemoryStream newResponseBody = RecyclableMemoryStreamManager.GetStream())
-                {
-                    // swap the context response body stream with the memory stream
-                    httpContext.Response.Body = newResponseBody;
-                    await _next(httpContext);
-                    // reset position to 0
-                    newResponseBody.Seek(0, SeekOrigin.Begin);
-                    // Copy the response body to the original body stream
-                    await newResponseBody.CopyToAsync(originalResponseBody);
-                    // Get response body in text format
-                    string responseBody = GetResponseBody(httpContext.Response, BufferSize);
-                    if (messageFilter != null)
-                    {
-                        messageFilter.ApplyBodyMask(ref responseBody);
-                    }
-                    sw.Stop();
+                messageFilter.ApplyBodyMask(ref responseBody);
+            }
+            sw.Stop();
 
-                    LogbookService.LogResponse(new ResponseLogContext()
-                    {
-                        LogLevel = LogLevel.Trace,
-                        FilterPath = path?.Value,
-                        MessageFilter = messageFilter,
-                        HttpResponse = httpContext.Response,
-                        Elapsed = sw.Elapsed,
-                        Body = responseBody
-                    });
-                }
-            }
-            finally
+            LogbookService.LogResponse(new ResponseLogContext()
             {
-                httpContext.Response.Body = originalResponseBody;
-            }
+                LogLevel = LogLevel.Trace,
+                FilterPath = path?.Value,
+                MessageFilter = messageFilter,
+                HttpResponse = httpContext.Response,
+                Elapsed = sw.Elapsed,
+                Body = responseBody
+            });
         }
 
         private bool LogException(string ipAddress, HttpContext httpContext, Exception ex, Stopwatch sw)
@@ -186,8 +216,10 @@ namespace Scombroid.AspNetCore.HttpLogbook
             //request.EnableRewind();
             using (var requestStream = RecyclableMemoryStreamManager.GetStream())
             {
-                await request.Body.CopyToAsync(requestStream);
+                var pos = request.Body.Position; // get current position
                 request.Body.Seek(0, SeekOrigin.Begin);
+                await request.Body.CopyToAsync(requestStream);
+                request.Body.Position = pos; // reset back to original position
                 return ReadStreamInChunks(requestStream, BufferSize);
             }
         }
@@ -216,6 +248,20 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 result = textWriter.ToString();
             }
             return result;
+        }
+
+        private static PathString? ToPathString(string val)
+        {
+            if (string.IsNullOrEmpty(val))
+            {
+                return null;
+            }
+
+            if (!val.StartsWith("/"))
+            {
+                return "/" + val;
+            }
+            return val;
         }
     }
 }

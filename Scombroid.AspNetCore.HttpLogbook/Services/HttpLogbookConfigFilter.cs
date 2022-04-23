@@ -32,6 +32,11 @@ namespace Scombroid.AspNetCore.HttpLogbook
             }
         }
 
+        public bool IsEnabled()
+        {
+            return this.config.Enabled;
+        }
+
         public HttpLogbookMethodFilter Find(PathString? path, string method)
         {
             var pathRule = FindPathFilter(path, config.Paths);

@@ -9,6 +9,8 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
 {
     public class MyHttpLogbookFilter : IHttpLogbookFilter
     {
+        public bool IsEnabled() { return true; }
+
         private HttpLogbookMethodFilter MyRule { get; set; } = new HttpLogbookMethodFilter()
         {
             Request = new HttpLogbookMessageFilter( )
