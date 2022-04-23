@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IO;
@@ -55,59 +57,6 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 LogLevel = logLevel
             };
 
-            try
-            {
-                logContext.FilterPath = httpContext?.Request?.Path;
-                logContext.Filter = LogbookFilter.Find(logContext.FilterPath, httpContext?.Request?.Method);
-                logContext.HttpContext = httpContext;
-
-                // Get request body
-                if (logContext.Filter != null && (logContext.Filter?.Request?.Body).GetValueOrDefault(false))
-                {
-                    var requestBody = await GetRequestBodyAsync(httpContext.Request, bufferSize);
-                    if (logContext.Filter.Request != null)
-                    {
-                        logContext.Filter.Request.ApplyBodyMask(ref requestBody);
-                    }
-
-                    logContext.RequestBody = requestBody;
-                }
-
-                // process
-                if (logContext.Filter != null && logContext.Filter.Enabled)
-                {
-                    if ((logContext.Filter.Response?.Body).GetValueOrDefault(false))
-                    {
-                        var responseBody = await ResponseBodyLogging(httpContext, bufferSize);
-                        if (logContext.Filter.Response != null)
-                        {
-                            logContext.Filter.Response.ApplyBodyMask(ref responseBody);
-                        }
-                        logContext.ResponseBody = responseBody;
-                    }
-                    else
-                    {
-                        await _next(httpContext);
-                    }
-                    sw.Stop();
-
-                    logContext.Elapsed = sw.Elapsed;
-                    LogbookService.Log(logContext);
-                }
-                else
-                {
-                    await _next(httpContext);
-                }
-            }
-            // LogException() will always returns false, to allow the exception to bubble up
-            catch (Exception ex) when (LogException(ex, sw, logContext))
-            {
-            }
-        }
-
-        private async Task<string> ResponseBodyLogging(HttpContext httpContext, int bufferSize)
-        {
-            string responseBody;
             Stream originalResponseBody = httpContext.Response.Body;
             try
             {
@@ -115,21 +64,111 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 {
                     // swap the context response body stream with the memory stream
                     httpContext.Response.Body = newResponseBody;
+
+                    // enable buffering
+                    // https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.httprequestrewindextensions.enablebuffering?view=aspnetcore-6.0#microsoft-aspnetcore-http-httprequestrewindextensions-enablebuffering(microsoft-aspnetcore-http-httprequest)
+                    // Ensure the requestBody can be read multiple times. Normally buffers request bodies in memory; writes requests larger than 30K bytes to disk.
+                    httpContext.Request.EnableBuffering();
+
+                    // execute next
                     await _next(httpContext);
+
                     // reset position to 0
                     newResponseBody.Seek(0, SeekOrigin.Begin);
+
                     // Copy the response body to the original body stream
                     await newResponseBody.CopyToAsync(originalResponseBody);
-                    // Get response body in text format
-                    responseBody = GetResponseBody(httpContext.Response, bufferSize);
+
+                    // default to request path
+                    logContext.FilterPath = httpContext?.Request?.Path;
+
+                    // override with route template (if applicable)
+                    Endpoint endpoint = httpContext.Features.Get<IEndpointFeature>()?.Endpoint;
+                    ControllerActionDescriptor controllerActionDescriptor = endpoint?.Metadata?.GetMetadata<ControllerActionDescriptor>();
+                    if (controllerActionDescriptor?.AttributeRouteInfo != null)
+                    {
+                        // use route template
+                        logContext.FilterPath = ToPathString(controllerActionDescriptor.AttributeRouteInfo.Template ?? string.Empty);
+                    }
+
+                    // find filer
+                    logContext.Filter = LogbookFilter.Find(logContext.FilterPath, httpContext?.Request?.Method);
+                    logContext.HttpContext = httpContext;
+
+                    // Get request body
+                    if (logContext.Filter != null && (logContext.Filter?.Request?.Body).GetValueOrDefault(false))
+                    {
+                        var requestBody = await GetRequestBodyAsync(httpContext.Request, bufferSize);
+                        if (logContext.Filter.Request != null)
+                        {
+                            logContext.Filter.Request.ApplyBodyMask(ref requestBody);
+                        }
+
+                        logContext.RequestBody = requestBody;
+                    }
+
+                    // process
+                    if (logContext.Filter != null && logContext.Filter.Enabled)
+                    {
+                        if ((logContext.Filter.Response?.Body).GetValueOrDefault(false))
+                        {
+                            var responseBody = GetResponseBody(httpContext.Response, bufferSize);
+                            if (logContext.Filter.Response != null)
+                            {
+                                logContext.Filter.Response.ApplyBodyMask(ref responseBody);
+                            }
+                            logContext.ResponseBody = responseBody;
+                        }
+                        else
+                        {
+                            await _next(httpContext);
+                        }
+                        sw.Stop();
+
+                        logContext.Elapsed = sw.Elapsed;
+                        LogbookService.Log(logContext);
+                    }
+                    else
+                    {
+                        await _next(httpContext);
+                    }
                 }
+            }
+            // LogException() will always returns false, to allow the exception to bubble up
+            catch (Exception ex) when (LogException(ex, sw, logContext))
+            {
             }
             finally
             {
                 httpContext.Response.Body = originalResponseBody;
             }
-            return responseBody;
         }
+
+        //private async Task<string> ResponseBodyLogging(HttpContext httpContext, int bufferSize)
+        //{
+        //    string responseBody;
+        //    Stream originalResponseBody = httpContext.Response.Body;
+        //    try
+        //    {
+        //        using (MemoryStream newResponseBody = RecyclableMemoryStreamManager.GetStream())
+        //        {
+        //            // swap the context response body stream with the memory stream
+        //            httpContext.Response.Body = newResponseBody;
+        //            await _next(httpContext);
+        //            // reset position to 0
+        //            newResponseBody.Seek(0, SeekOrigin.Begin);
+        //            // Copy the response body to the original body stream
+        //            await newResponseBody.CopyToAsync(originalResponseBody);
+        //            // Get response body in text format
+        //            responseBody = GetResponseBody(httpContext.Response, bufferSize);
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        httpContext.Response.Body = originalResponseBody;
+        //    }
+        //    return responseBody;
+        //}
 
         private bool LogException(Exception ex, Stopwatch sw, LogContext logContext)
         {
@@ -141,12 +180,10 @@ namespace Scombroid.AspNetCore.HttpLogbook
 
         private async Task<string> GetRequestBodyAsync(HttpRequest request, int bufferSize)
         {
-            request.EnableBuffering();
-            //request.EnableRewind();
             using (var requestStream = RecyclableMemoryStreamManager.GetStream())
             {
-                await request.Body.CopyToAsync(requestStream);
                 request.Body.Seek(0, SeekOrigin.Begin);
+                await request.Body.CopyToAsync(requestStream);
                 return ReadStreamInChunks(requestStream, bufferSize);
             }
         }
@@ -175,6 +212,20 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 result = textWriter.ToString();
             }
             return result;
+        }
+
+        private static string ToPathString(string val)
+        {
+            if (string.IsNullOrEmpty(val))
+            {
+                return null;
+            }
+
+            if (!val.StartsWith("/"))
+            {
+                return "/" + val;
+            }
+            return val;
         }
     }
 }
