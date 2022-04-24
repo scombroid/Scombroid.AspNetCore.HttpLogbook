@@ -134,33 +134,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 httpContext.Response.Body = originalResponseBody;
             }
         }
-
-        //private async Task<string> ResponseBodyLogging(HttpContext httpContext, int bufferSize)
-        //{
-        //    string responseBody;
-        //    Stream originalResponseBody = httpContext.Response.Body;
-        //    try
-        //    {
-        //        using (MemoryStream newResponseBody = RecyclableMemoryStreamManager.GetStream())
-        //        {
-        //            // swap the context response body stream with the memory stream
-        //            httpContext.Response.Body = newResponseBody;
-        //            await _next(httpContext);
-        //            // reset position to 0
-        //            newResponseBody.Seek(0, SeekOrigin.Begin);
-        //            // Copy the response body to the original body stream
-        //            await newResponseBody.CopyToAsync(originalResponseBody);
-        //            // Get response body in text format
-        //            responseBody = GetResponseBody(httpContext.Response, bufferSize);
-        //        }
-        //    }
-        //    finally
-        //    {
-        //        httpContext.Response.Body = originalResponseBody;
-        //    }
-        //    return responseBody;
-        //}
-
+        
         private bool LogException(Exception ex, Stopwatch sw, LogContext logContext)
         {
             sw.Stop();
