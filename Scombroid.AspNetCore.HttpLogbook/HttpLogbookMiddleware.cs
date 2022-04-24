@@ -91,25 +91,24 @@ namespace Scombroid.AspNetCore.HttpLogbook
                         logContext.FilterPath = ToPathString(controllerActionDescriptor.AttributeRouteInfo.Template ?? string.Empty);
                     }
 
-                    // find filer
+                    // Find filer
                     logContext.Filter = LogbookFilter.Find(logContext.FilterPath, httpContext?.Request?.Method);
                     logContext.HttpContext = httpContext;
-
-                    // Get request body
-                    if (logContext.Filter != null && (logContext.Filter?.Request?.Body).GetValueOrDefault(false))
-                    {
-                        var requestBody = await GetRequestBodyAsync(httpContext.Request, bufferSize);
-                        if (logContext.Filter.Request != null)
-                        {
-                            logContext.Filter.Request.ApplyBodyMask(ref requestBody);
-                        }
-
-                        logContext.RequestBody = requestBody;
-                    }
-
-                    // process
                     if (logContext.Filter != null && logContext.Filter.Enabled)
                     {
+                        // Get request body
+                        if ((logContext.Filter?.Request?.Body).GetValueOrDefault(false))
+                        {
+                            var requestBody = await GetRequestBodyAsync(httpContext.Request, bufferSize);
+                            if (logContext.Filter.Request != null)
+                            {
+                                logContext.Filter.Request.ApplyBodyMask(ref requestBody);
+                            }
+
+                            logContext.RequestBody = requestBody;
+                        }
+
+                        // Get response body
                         if ((logContext.Filter.Response?.Body).GetValueOrDefault(false))
                         {
                             var responseBody = GetResponseBody(httpContext.Response, bufferSize);
@@ -119,18 +118,10 @@ namespace Scombroid.AspNetCore.HttpLogbook
                             }
                             logContext.ResponseBody = responseBody;
                         }
-                        else
-                        {
-                            await _next(httpContext);
-                        }
                         sw.Stop();
 
                         logContext.Elapsed = sw.Elapsed;
                         LogbookService.Log(logContext);
-                    }
-                    else
-                    {
-                        await _next(httpContext);
                     }
                 }
             }
