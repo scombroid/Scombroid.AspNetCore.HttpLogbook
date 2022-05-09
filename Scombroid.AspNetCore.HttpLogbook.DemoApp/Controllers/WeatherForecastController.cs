@@ -37,7 +37,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp.Controllers
         }
 
         [HttpGet("{id}")]
-        public IEnumerable<WeatherForecast> Get([FromRoute] int id)
+        public IEnumerable<WeatherForecast> GetWeatherForecast([FromRoute] int id)
         {
             var rng = new Random();
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
