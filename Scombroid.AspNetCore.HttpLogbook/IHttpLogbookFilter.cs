@@ -4,7 +4,8 @@ namespace Scombroid.AspNetCore.HttpLogbook
 {
     public interface IHttpLogbookFilter
     {
-        HttpLogbookMethodFilter Find(PathString? pathString, string method);
+        HttpLogbookMethodFilter FindByAction(string actionName, string method);
+        HttpLogbookMethodFilter FindByPath(PathString? pathString, string method);
     }
 }
 

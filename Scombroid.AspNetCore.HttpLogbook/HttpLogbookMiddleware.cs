@@ -79,20 +79,23 @@ namespace Scombroid.AspNetCore.HttpLogbook
                     // Copy the response body to the original body stream
                     await newResponseBody.CopyToAsync(originalResponseBody);
 
-                    // default to request path
-                    logContext.FilterPath = httpContext?.Request?.Path;
+                    // request path
+                    var requestPath = httpContext?.Request?.Path;
 
-                    // override with route template (if applicable)
+                    // try with action name first
                     Endpoint endpoint = httpContext.Features.Get<IEndpointFeature>()?.Endpoint;
-                    ControllerActionDescriptor controllerActionDescriptor = endpoint?.Metadata?.GetMetadata<ControllerActionDescriptor>();
-                    if (controllerActionDescriptor?.AttributeRouteInfo != null)
+                    if (endpoint != null)
                     {
-                        // use route template
-                        logContext.FilterPath = ToPathString(controllerActionDescriptor.AttributeRouteInfo.Template ?? string.Empty);
+                        var actionName = endpoint?.Metadata?.GetMetadata<ControllerActionDescriptor>()?.ActionName;
+                        logContext.Filter = LogbookFilter.FindByAction(actionName, httpContext?.Request?.Method);
                     }
 
-                    // Find filer
-                    logContext.Filter = LogbookFilter.Find(logContext.FilterPath, httpContext?.Request?.Method);
+                    // use request path
+                    if (logContext.Filter == null)
+                    {
+                        logContext.Filter = LogbookFilter.FindByPath(requestPath, httpContext?.Request?.Method);
+                    }
+
                     logContext.HttpContext = httpContext;
                     if (logContext.Filter != null && logContext.Filter.Enabled)
                     {
