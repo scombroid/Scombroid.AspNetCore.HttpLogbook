@@ -18,7 +18,13 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
             }
         };
 
-        public HttpLogbookMethodFilter Find(PathString? pathString, string method)
+        public HttpLogbookMethodFilter FindByAction(string actionName, string method) 
+        {
+            return MyRule;
+        }
+
+
+        public HttpLogbookMethodFilter FindByPath(PathString? pathString, string method)
         {
             return MyRule;
         }

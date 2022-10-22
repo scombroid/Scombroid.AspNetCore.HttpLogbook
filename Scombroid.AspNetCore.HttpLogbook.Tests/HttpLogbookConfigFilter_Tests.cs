@@ -42,19 +42,19 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
             var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
 
-            var filter = httpLogbookConfigFilter.Find("/Simpletest", "POST");
+            var filter = httpLogbookConfigFilter.FindByPath("/Simpletest", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/simpleTest", "POST");
+            filter = httpLogbookConfigFilter.FindByPath("/simpleTest", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/SiMpLeTeSt", "POST");
+            filter = httpLogbookConfigFilter.FindByPath("/SiMpLeTeSt", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
@@ -68,31 +68,31 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
             var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
 
-            var filter = httpLogbookConfigFilter.Find("/doesnotexists", "POST");
+            var filter = httpLogbookConfigFilter.FindByPath("/doesnotexists", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/doesnotexists", "PUT");
+            filter = httpLogbookConfigFilter.FindByPath("/doesnotexists", "PUT");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/doesnotexists", "GET");
+            filter = httpLogbookConfigFilter.FindByPath("/doesnotexists", "GET");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/doesnotexists", "DELETE");
+            filter = httpLogbookConfigFilter.FindByPath("/doesnotexists", "DELETE");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/doesnotexists", "PATCH");
+            filter = httpLogbookConfigFilter.FindByPath("/doesnotexists", "PATCH");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
@@ -107,28 +107,28 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
             var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
 
-            var filter = httpLogbookConfigFilter.Find("/testpostonly", "POST");
+            var filter = httpLogbookConfigFilter.FindByPath("/testpostonly", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/testpostonly", "pOsT");
+            filter = httpLogbookConfigFilter.FindByPath("/testpostonly", "pOsT");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
             Assert.False(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/testpostonly", "PUT");
+            filter = httpLogbookConfigFilter.FindByPath("/testpostonly", "PUT");
             Assert.Null(filter);
 
-            filter = httpLogbookConfigFilter.Find("/testpostonly", "GET");
+            filter = httpLogbookConfigFilter.FindByPath("/testpostonly", "GET");
             Assert.Null(filter);
 
-            filter = httpLogbookConfigFilter.Find("/testpostonly", "DELETE");
+            filter = httpLogbookConfigFilter.FindByPath("/testpostonly", "DELETE");
             Assert.Null(filter);
 
-            filter = httpLogbookConfigFilter.Find("/testpostonly", "PATCH");
+            filter = httpLogbookConfigFilter.FindByPath("/testpostonly", "PATCH");
             Assert.Null(filter);
         }
 
@@ -139,7 +139,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
             var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
 
-            var filter = httpLogbookConfigFilter.Find("/requestbodyenabled", "POST");
+            var filter = httpLogbookConfigFilter.FindByPath("/requestbodyenabled", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.True(filter.Request.Body);
@@ -153,7 +153,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
             var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
 
-            var filter = httpLogbookConfigFilter.Find("/responsebodyenabled", "POST");
+            var filter = httpLogbookConfigFilter.FindByPath("/responsebodyenabled", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.Request.Body);
@@ -167,7 +167,7 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             var loggerMock = new Mock<ILogger<HttpLogbookConfigFilter>>();
             var httpLogbookConfigFilter = new HttpLogbookConfigFilter(loggerMock.Object, optionMonitorMock.Object);
 
-            var filter = httpLogbookConfigFilter.Find("/MixMethods", "GET");
+            var filter = httpLogbookConfigFilter.FindByPath("/MixMethods", "GET");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.True(filter.QueryString);
@@ -176,14 +176,14 @@ namespace Scombroid.AspNetCore.HttpLogbook.Tests
             Assert.False(filter.Response.Body);
             Assert.False(filter.Response.Headers);
 
-            filter = httpLogbookConfigFilter.Find("/MixMethods", "POST");
+            filter = httpLogbookConfigFilter.FindByPath("/MixMethods", "POST");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.QueryString);
             Assert.False(filter.Request.Body);
             Assert.True(filter.Response.Body);
 
-            filter = httpLogbookConfigFilter.Find("/MixMethods", "DELETE");
+            filter = httpLogbookConfigFilter.FindByPath("/MixMethods", "DELETE");
             Assert.NotNull(filter);
             Assert.True(filter.Enabled);
             Assert.False(filter.QueryString);
