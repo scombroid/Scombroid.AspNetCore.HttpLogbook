@@ -4,23 +4,13 @@ using System;
 
 namespace Scombroid.AspNetCore.HttpLogbook
 {
-    public abstract class LogContext
+    public class LogContext
     {
-        public LogLevel LogLevel { get; set; }
-        public string FilterPath { get; set; }
-        public HttpLogbookMessageFilter MessageFilter { get; set; }
-        public string Body { get; set; }        
-    }
-
-    public class RequestLogContext : LogContext
-    {
-        public HttpRequest HttpRequest { get; set; }
-    }
-
-    public class ResponseLogContext : LogContext
-    {
-        public HttpResponse HttpResponse { get; set; }
+        public Microsoft.Extensions.Logging.LogLevel LogLevel { get; set; }
+        public HttpLogbookMethodFilter Filter { get; set; }        
+        public HttpContext HttpContext { get; set; }
+        public string RequestBody { get; set; }
+        public string ResponseBody { get; set; }
         public TimeSpan Elapsed { get; set; }
     }
-
 }

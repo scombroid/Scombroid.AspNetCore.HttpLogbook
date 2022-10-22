@@ -9,14 +9,9 @@ namespace Microsoft.AspNetCore.Builder
     {
         public static IApplicationBuilder UseLogbook(this IApplicationBuilder app)
         {
-            return UseLogbook(app, new HttpLogbookMiddlewareOptions());
-        }
-
-        public static IApplicationBuilder UseLogbook(this IApplicationBuilder app, HttpLogbookMiddlewareOptions options)
-        {
             app.Validate();
 
-            app.UseMiddleware<HttpLogbookMiddleware>(options);
+            app.UseMiddleware<HttpLogbookMiddleware>();
 
             return app;
         }

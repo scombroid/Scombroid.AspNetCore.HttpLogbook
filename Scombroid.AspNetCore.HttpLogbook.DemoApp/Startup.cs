@@ -47,15 +47,10 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
                 app.UseDeveloperExceptionPage();
             }
 
-            var config = BindConfig<HttpLogbook.Filters.HttpLogbookConfig>("HttpLogbook");
-            app.UseLogbook(new HttpLogbookMiddlewareOptions()
-            {
-                BufferSize = config.StreamBufferSize
-            });
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
+            app.UseLogbook();
 
             app.UseAuthorization();
 

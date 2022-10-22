@@ -1,8 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Scombroid.AspNetCore.HttpLogbook.Filters;
 
 namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
@@ -13,15 +10,21 @@ namespace Scombroid.AspNetCore.HttpLogbook.DemoApp
         {
             Request = new HttpLogbookMessageFilter( )
             {
-                LogLevel = LogLevel.Trace
+                Body = true
             },
             Response = new HttpLogbookMessageFilter()
             {
-                LogLevel = LogLevel.Trace
+                Body = true
             }
         };
 
-        public HttpLogbookMethodFilter Find(PathString? pathString, string method)
+        public HttpLogbookMethodFilter FindByAction(string actionName, string method) 
+        {
+            return MyRule;
+        }
+
+
+        public HttpLogbookMethodFilter FindByPath(PathString? pathString, string method)
         {
             return MyRule;
         }

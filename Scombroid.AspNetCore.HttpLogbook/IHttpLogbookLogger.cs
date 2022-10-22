@@ -5,7 +5,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
 {
     public interface IHttpLogbookLogger
     {
-        void LogRequest(RequestLogContext context);
-        void LogResponse(ResponseLogContext context);
+        void Log(LogContext context);
+        void LogException(LogContext context, Exception ex);
     }
 }

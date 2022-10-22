@@ -1,48 +1,41 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Scombroid.AspNetCore.HttpLogbook.Services
 {
     public class DefaultHttpLogbookLogger : IHttpLogbookLogger
     {
         private readonly ILogger Logger;
-        const string RequestMessageTemplate = "Request {IpAddress} {RequestMethod} {RequestPath}";
-        const string TraceRequestMessageTemplate = "Request {IpAddress} {RequestMethod} {RequestPath} {@ContentType} {@RequestBody}";
-        const string ResponseMessageTemplate = "Response {IpAddress} {StatusCode} {Elapsed}ms";
-        const string TraceResponseMessageTemplate = "Response {IpAddress} {StatusCode} {Elapsed}ms {@ContentType} {@ResponseBody}";
 
         public DefaultHttpLogbookLogger(ILogger<DefaultHttpLogbookLogger> logger)
         {
             Logger = logger;
         }
 
-        public void LogRequest(RequestLogContext context)
+        public void Log(LogContext context)
         {
-            LogRequest(context.LogLevel, context.HttpRequest, context.Body);
+            const string RequestMessageTemplate = "{RequestMethod} {RequestPath} {StatusCode} {Elapsed}ms";
+            Logger.Log(context.LogLevel, 
+                RequestMessageTemplate,
+                context.HttpContext?.Request?.Method,
+                context.HttpContext?.Request?.Path,
+                context.HttpContext?.Response?.StatusCode,
+                context.Elapsed.TotalMilliseconds);
         }
 
-        private void LogRequest(LogLevel level, HttpRequest request, string body)
-        {
-            var ipAddress = request?.HttpContext?.Connection?.RemoteIpAddress;
-            if (body == null)
-                Logger.LogInformation(RequestMessageTemplate, ipAddress, request.Method, request.Path, body);
-            else
-                Logger.LogInformation(TraceRequestMessageTemplate, ipAddress, request.Method, request.Path, request.ContentType, body);
-        }
 
-        public void LogResponse(ResponseLogContext context)
+        public void LogException(LogContext context, Exception ex)
         {
-            LogResponse(context.LogLevel, context.HttpResponse, context.Elapsed, context.HttpResponse.ContentType, context.Body);
-        }
-
-        private void LogResponse(LogLevel level, HttpResponse response, TimeSpan elapsed, string contentType, string body)
-        {
-            var ipAddress = response?.HttpContext?.Connection?.RemoteIpAddress;
-            if (contentType == null && body == null)
-                Logger.LogInformation(ResponseMessageTemplate, ipAddress, response.StatusCode, elapsed.TotalMilliseconds.ToString("0.0000"));
-            else
-                Logger.LogInformation(TraceResponseMessageTemplate, ipAddress, response.StatusCode, elapsed.TotalMilliseconds.ToString("0.0000"), contentType, body);
+            const string ExceptionTemplate = "{RequestMethod} {RequestPath} {StatusCode} throws exception {Exception}";
+            Logger.LogError(ex,
+                    ExceptionTemplate,
+                    context.HttpContext?.Request?.Method,
+                    context.HttpContext?.Request?.Path,
+                    context.HttpContext?.Response?.StatusCode,
+                    ex);
         }
     }
 }

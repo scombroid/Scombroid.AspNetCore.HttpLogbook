@@ -11,6 +11,7 @@ namespace Scombroid.AspNetCore.HttpLogbook
     {
         private readonly ILogger Logger;
         private HttpLogbookConfig config;
+
         public HttpLogbookConfigFilter(ILogger<HttpLogbookConfigFilter> logger, IOptionsMonitor<HttpLogbookConfig> configOption)
         {
             Logger = logger;
@@ -31,13 +32,38 @@ namespace Scombroid.AspNetCore.HttpLogbook
                 Logger.LogCritical($"Exception occured while refreshing http log book config. Error: {ex.Message}, StackTrace: {ex.StackTrace}");
             }
         }
+        public HttpLogbookMethodFilter FindByAction(string actionName, string method)
+        {
+            var actionRule = FindActionFilter(actionName, config.Actions);
+            if (actionRule != null)
+            {
+                return FindMethodFilter(method, actionRule.Methods);
+            }
+            return null;
+        }
 
-        public HttpLogbookMethodFilter Find(PathString? path, string method)
+        public HttpLogbookMethodFilter FindByPath(PathString? path, string method)
         {
             var pathRule = FindPathFilter(path, config.Paths);
             if (pathRule != null)
             {
                 return FindMethodFilter(method, pathRule.Methods);
+            }
+            return null;
+        }
+
+        private HttpLogbookPathFilter FindActionFilter(string action, Dictionary<string, HttpLogbookPathFilter> actionFilters)
+        {
+            HttpLogbookPathFilter actionRule;
+            if (actionFilters != null)
+            {
+                if (!string.IsNullOrEmpty(action))
+                {
+                    if (actionFilters.TryGetValue(action, out actionRule))
+                    {
+                        return actionRule;
+                    }
+                }
             }
             return null;
         }
